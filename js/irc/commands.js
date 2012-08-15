@@ -17,10 +17,11 @@ qwebirc.irc.Commands = new Class({
      var command = pane.command(session);
      if (command) {
        this["cmd_" + command] = [false, undefined, undefined, function(args) {
-         ui.addPane(name);
+         ui.addPane(name, session);
        }];
      }
    }.bind(this));
+
   },
   
   /* [require_active_window, splitintoXargs, minargs, function] */

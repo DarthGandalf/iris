@@ -7,12 +7,12 @@ qwebirc.irc.IRCClient = new Class({
     this.prefixes = "@+";
     this.modeprefixes = "ov";
     this.autojoin = connOptions.autojoin;
-    
+
     this.commandparser = new qwebirc.irc.Commands(session);
     this.exec = this.commandparser.dispatch.bind(this.commandparser);
 
     this.hilightController = new qwebirc.ui.HilightController(session);
-    this.statusWindow = ui.newClient();
+    this.statusWindow = ui.newClient(session);
     this.lastNicks = [];
     
     this.inviteChanList = [];
@@ -24,7 +24,7 @@ qwebirc.irc.IRCClient = new Class({
     if(!data)
       data = {};
       
-    var w = ui.getWindow(type, window);
+    var w = this.getWindow(type, window);
     if(w) {
       w.addLine(type, data);
     } else {
@@ -54,7 +54,7 @@ qwebirc.irc.IRCClient = new Class({
     this.getActiveWindow().addLine(type, data);
   },
   newTargetOrActiveLine: function(target, type, data) {
-    if(ui.getWindow(type, target)) {
+    if(this.getWindow(type, target)) {
       this.newLine(target, type, data);
     } else {
       this.newActiveLine(type, data);
@@ -89,14 +89,17 @@ qwebirc.irc.IRCClient = new Class({
       sortednames.push(nh[name]);
     });
     
-    var w = ui.getWindow(qwebirc.ui.WINDOW_CHANNEL, channel);
+    var w = this.getWindow(qwebirc.ui.WINDOW_CHANNEL, channel);
     if(w)
       w.updateNickList(sortednames);
   },
+  getWindow: function(type, name) {
+	  return ui.getWindow(type, name, this.session);
+  },
   newWindow: function(name, type, select) {
-    var w = ui.getWindow(type, name);
+    var w = this.getWindow(type, name);
     if(!w) {
-      w = ui.newWindow(type, name);
+      w = ui.newWindow(type, name, this.session);
     }
     
     if(select)
@@ -107,7 +110,7 @@ qwebirc.irc.IRCClient = new Class({
   newQueryWindow: function(name, privmsg) {
     var e;
 
-    if(ui.getWindow(qwebirc.ui.WINDOW_QUERY, name))
+    if(this.getWindow(qwebirc.ui.WINDOW_QUERY, name))
       return;
     
     if(privmsg)
@@ -116,22 +119,22 @@ qwebirc.irc.IRCClient = new Class({
   },
   newPrivmsgQueryWindow: function(name) {
     if(conf.ui.dedicated_msg_window) {
-      if(!ui.getWindow(qwebirc.ui.WINDOW_MESSAGES, "Messages"))
-        return ui.newWindow(this, qwebirc.ui.WINDOW_MESSAGES, "Messages");
+      if(!this.getWindow(qwebirc.ui.WINDOW_MESSAGES, "Messages"))
+        return this.newWindow("Messages", qwebirc.ui.WINDOW_MESSAGES, false);
     } else {
       return this.newWindow(name, qwebirc.ui.WINDOW_QUERY, false);
     }
   },
   newNoticeQueryWindow: function(name) {
     if(conf.ui.dedicated_notice_window)
-      if(!ui.getWindow(qwebirc.ui.WINDOW_MESSAGES, "Messages"))
-        return ui.newWindow(this, qwebirc.ui.WINDOW_MESSAGES, "Messages");
+      if(!this.getWindow(qwebirc.ui.WINDOW_MESSAGES, "Messages"))
+        return this.newWindow("Messages", qwebirc.ui.WINDOW_MESSAGES, false);
   },
   newQueryLine: function(window, type, data, privmsg, active) {
-    if(ui.getWindow(qwebirc.ui.WINDOW_QUERY, window))
+    if(this.getWindow(qwebirc.ui.WINDOW_QUERY, window))
       return this.newLine(window, type, data);
       
-    var w = ui.getWindow(qwebirc.ui.WINDOW_MESSAGES, "Messages");
+    var w = this.getWindow(qwebirc.ui.WINDOW_MESSAGES, "Messages");
     
     var e;
     if(privmsg) {
@@ -203,7 +206,7 @@ qwebirc.irc.IRCClient = new Class({
     var nick = user.hostToNick();
     var host = user.hostToHost();
     
-    if((nick == this.nickname) && !ui.getWindow(qwebirc.ui.WINDOW_CHANNEL, channel))
+    if((nick == this.nickname) && !this.getWindow(qwebirc.ui.WINDOW_CHANNEL, channel))
       this.newWindow(channel, qwebirc.ui.WINDOW_CHANNEL, true);
     this.tracker.addNickToChannel(nick, channel);
 
@@ -222,7 +225,7 @@ qwebirc.irc.IRCClient = new Class({
         
     if(nick == this.nickname) {
       this.tracker.removeChannel(channel);
-      var w = ui.getWindow(qwebirc.ui.WINDOW_CHANNEL, channel);
+      var w = this.getWindow(qwebirc.ui.WINDOW_CHANNEL, channel);
       if(w)
         ui.closeWindow(w);
     } else {
@@ -236,7 +239,7 @@ qwebirc.irc.IRCClient = new Class({
   userKicked: function(kicker, channel, kickee, message) {
     if(kickee == this.nickname) {
       this.tracker.removeChannel(channel);
-      var w = ui.getWindow(qwebirc.ui.WINDOW_CHANNEL, channel);
+      var w = this.getWindow(qwebirc.ui.WINDOW_CHANNEL, channel);
       if(w)
         ui.closeWindow(w);
     } else {
@@ -314,10 +317,10 @@ qwebirc.irc.IRCClient = new Class({
   },
   channelTopic: function(user, channel, topic) {
     this.newChanLine(channel, "TOPIC", user, {"m": topic});
-    ui.getWindow(qwebirc.ui.WINDOW_CHANNEL, channel).updateTopic(topic);
+    this.getWindow(qwebirc.ui.WINDOW_CHANNEL, channel).updateTopic(topic);
   },
   initialTopic: function(channel, topic) {
-    ui.getWindow(qwebirc.ui.WINDOW_CHANNEL, channel).updateTopic(topic);
+    this.getWindow(qwebirc.ui.WINDOW_CHANNEL, channel).updateTopic(topic);
   },
   channelCTCP: function(user, channel, type, args) {
     if(args == undefined)

@@ -5,8 +5,8 @@ qwebirc.ui.WINDOW_MESSAGES = 0x08;
 qwebirc.ui.WINDOW_CUSTOM =   0x10;
 
 qwebirc.ui.BaseUI = new Class({
-  initialize: function(session, parentElement, windowClass, uiName) {
-    this.session = session;
+  initialize: function(sessions, parentElement, windowClass, uiName) {
+    this.sessions = sessions;
     this.parentElement = parentElement;
     this.windowClass = windowClass;
     
@@ -15,6 +15,7 @@ qwebirc.ui.BaseUI = new Class({
     this.parentElement.addClass("qwebirc-" + uiName);
     this.firstClient = false;
     this.commandhistory = new qwebirc.irc.CommandHistory();
+	this.anystatuswindow = null;
     
     this.windowFocused = true;
 
@@ -42,8 +43,8 @@ qwebirc.ui.BaseUI = new Class({
     
     this.postInitialize();
   },
-  newClient: function() {
-    var w = this.newWindow(qwebirc.ui.WINDOW_STATUS, "Status");
+  newClient: function(session) {
+    var w = this.newWindow(qwebirc.ui.WINDOW_STATUS, session.network + " - Status", session);
     this.selectWindow(w);
     if(!this.firstClient) {
       this.firstClient = true;
@@ -54,37 +55,40 @@ qwebirc.ui.BaseUI = new Class({
     }
     return w;
   },
-  getWindowIdentifier: function(type, name) {
+  getWindowIdentifier: function(type, name, network) {
     if(type == qwebirc.ui.WINDOW_MESSAGES)
       return "-M";
     if(type == qwebirc.ui.WINDOW_STATUS)
-      return "";
+      return "status_" + network;
     if(type == qwebirc.ui.WINDOW_CUSTOM)
       return "internal_" + qwebirc.irc.ASCIItoIRCLower(name);
 
-    return "_" + this.session.irc.toIRCLower(name);
+    return "_" + network + "/" + this.sessions[network].irc.toIRCLower(name);
   },
-  newWindow: function(type, name) {
-    var w = this.getWindow(type, name);
+  newWindow: function(type, name, session) {
+    var w = this.getWindow(type, name, session);
     if($defined(w))
       return w;
       
-    var wId = this.getWindowIdentifier(type, name);
-    var w = this.session.windows[wId] = new this.windowClass(this.session, type, name, wId);
+    var wId = this.getWindowIdentifier(type, name, session.network);
+    var w = this.sessions[session.network].windows[wId] = new this.windowClass(this.sessions[session.network], type, name, wId);
+	if (type == qwebirc.ui.WINDOW_STATUS && !this.anystatuswindow) {
+		this.anystatuswindow = w;
+	}
 
     this.windowArray.push(w);
 
     return w;
   },
-  getWindow: function(type, name) {
-    return this.session.windows[this.getWindowIdentifier(type, name)];
+  getWindow: function(type, name, session) {
+    return this.sessions[session.network].windows[this.getWindowIdentifier(type, name, session.network)];
   },
   getActiveWindow: function() {
     return this.active;
   },
   getActiveIRCWindow: function() {
     if(!this.active || this.active.type == qwebirc.ui.WINDOW_CUSTOM) {
-      return this.session.windows[this.getWindowIdentifier(qwebirc.ui.WINDOW_STATUS)];
+		return this.anystatuswindow;
     } else {
       return this.active;
     }
@@ -166,8 +170,8 @@ qwebirc.ui.BaseUI = new Class({
 
 qwebirc.ui.StandardUI = new Class({
   Extends: qwebirc.ui.BaseUI,
-  initialize: function(session, parentElement, windowClass, uiName) {
-    this.parent(session, parentElement, windowClass, uiName);
+  initialize: function(sessions, parentElement, windowClass, uiName) {
+    this.parent(sessions, parentElement, windowClass, uiName);
 
     this.tabCompleter = new qwebirc.ui.TabCompleterFactory(this);
     
@@ -230,31 +234,31 @@ qwebirc.ui.StandardUI = new Class({
       return false;
     return true;
   },
-  newCustomWindow: function(name, select, type) {
+  newCustomWindow: function(name, select, type, session) {
     if(!type)
       type = qwebirc.ui.WINDOW_CUSTOM;
       
-    var w = this.newWindow(type, name);
+    var w = this.newWindow(type, name, session);
     
     if(select)
       this.selectWindow(w);  
 
     return w;
   },
-  addPane: function(name) {
+  addPane: function(name, session) {
 
     var title = qwebirc.ui.Panes[name].title;
 
-    var id = this.getWindowIdentifier(qwebirc.ui.WINDOW_CUSTOM, title)
-    if(this.session.windows[id]) {
-      this.selectWindow(this.session.windows[id]);
+    var id = this.getWindowIdentifier(qwebirc.ui.WINDOW_CUSTOM, title, session.network)
+    if(session.windows[id]) {
+      this.selectWindow(session.windows[id]);
       return;
     }
     
-    var d = this.newCustomWindow(title, true);
+    var d = this.newCustomWindow(title, true, qwebirc.ui.WINDOW_CUSTOM, session);
     d.lines.addClass("qwebirc-pane" + name);
       
-    var ew = new qwebirc.ui.Panes[name].pclass(this.session, d);
+    var ew = new qwebirc.ui.Panes[name].pclass(session, d);
     
     d.setSubWindow(ew);
     return d;
@@ -330,11 +334,11 @@ qwebirc.ui.StandardUI = new Class({
 
 qwebirc.ui.NotificationUI = new Class({
   Extends: qwebirc.ui.StandardUI,
-  initialize: function(session, parentElement, windowClass, uiName) {
-    this.parent(session, parentElement, windowClass, uiName);
+  initialize: function(sessions, parentElement, windowClass, uiName) {
+    this.parent(sessions, parentElement, windowClass, uiName);
     
-    this.__beeper = new qwebirc.ui.Beeper(session);
-    this.__flasher = new qwebirc.ui.Flasher(session);
+    this.__beeper = new qwebirc.ui.Beeper();
+    this.__flasher = new qwebirc.ui.Flasher();
     
     this.beep = this.__beeper.beep.bind(this.__beeper);
     

@@ -3364,6 +3364,8 @@ var Request = new Class({
 		var type = $type(options);
 		if (type == 'string' || type == 'element') options = {data: options};
 
+		options.data += "_CSRF_Check=" + ZNC_CSRF;
+
 		var old = this.options;
 		options = $extend({data: old.data, url: old.url, method: old.method}, options);
 		var data = options.data, url = String(options.url), method = options.method.toLowerCase();

@@ -1,7 +1,7 @@
 qwebirc.ui.QUI = new Class({
   Extends: qwebirc.ui.RootUI,
-  initialize: function(session, parentElement) {
-    this.parent(session, parentElement, qwebirc.ui.QUI.Window, "qui");
+  initialize: function(sessions, parentElement) {
+    this.parent(sessions, parentElement, qwebirc.ui.QUI.Window, "qui");
     this.theme = new qwebirc.ui.Theme(null);
     this.setModifiableStylesheet("qui");
   },
@@ -67,7 +67,7 @@ qwebirc.ui.QUI = new Class({
     var menuitems = [];
     var i = 0;
     $each(qwebirc.ui.Panes, function(pane, name, object) {
-      var text = pane.menuitem(this.session);
+      var text = pane.menuitem(this.sessions[""]);
       if (text) {
         menuitems[i] = {};
         menuitems[i].text = text;
@@ -82,7 +82,7 @@ qwebirc.ui.QUI = new Class({
       e.addEvent("mousedown", function(e) { new Event(e).stop(); });
       e.addEvent("click", function() {
         dropdownMenu.hide();
-        ui.addPane(x.name);
+        ui.addPane(x.name, this.sessions[""]);
       }.bind(this));
       e.set("text", x.text);
       dropdownMenu.appendChild(e);
@@ -331,13 +331,13 @@ qwebirc.ui.QUI.Window = new Class({
   initialize: function(session, type, name, identifier) {
     this.parent(session, type, name, identifier);
 
-    this.tab = new Element("a", {"href": "#"});
+    this.tab = new Element("a", {"href": "#", "data-network" : session.network});
     this.tab.addClass("tab");
     this.tab.addEvent("focus", function() { this.blur() }.bind(this.tab));;
     this.spaceNode = document.createTextNode(" ");
  
-    /* Always put the connect/status windows in front. */
-    if (ui.tabs.hasChildNodes()) { 
+    /* // Always put the connect/status windows in front. */
+    if (ui.tabs.hasChildNodes()) { /*
       if (type == qwebirc.ui.WINDOW_STATUS) {
         ui.tabs.insertBefore(this.tab, ui.tabs.firstChild);
         ui.tabs.insertBefore(this.spaceNode, this.tab.nextSibling);
@@ -349,12 +349,37 @@ qwebirc.ui.QUI.Window = new Class({
       else {
         ui.tabs.appendChild(this.tab);
         ui.tabs.appendChild(this.spaceNode);
-      }
+      }*/
+		/* Group windows by networks */
+		if (type == qwebirc.ui.WINDOW_STATUS || type == qwebirc.ui.WINDOW_CUSTOM) {
+			ui.tabs.appendChild(this.tab);
+			ui.tabs.appendChild(this.spaceNode);
+		} else {
+			var mynet = false;
+			var inserted = false;
+			for (var i = 0; i < ui.tabs.childNodes.length; i+=2) {
+				var item = ui.tabs.childNodes[i];
+				if (mynet && item.getAttribute('data-network') != session.network) {
+					ui.tabs.insertBefore(this.tab, item);
+					ui.tabs.insertBefore(this.spaceNode, this.tab.nextSibling);
+					inserted = true;
+					break;
+				}
+				if (item.getAttribute('data-network') == session.network) {
+					mynet = true;
+				}
+			}
+			if (!inserted) {
+				ui.tabs.appendChild(this.tab);
+				ui.tabs.appendChild(this.spaceNode);
+			}
+		}
     } 
     else {
       ui.tabs.appendChild(this.tab);
       ui.tabs.appendChild(this.spaceNode);
     }
+
     
     this.tab.appendText(name);
     this.tab.addEvent("click", function(e) {

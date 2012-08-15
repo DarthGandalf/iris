@@ -6,6 +6,9 @@ qwebirc.session = new Class({
 	/* The IRC connection instance. */
 	irc: null,
 
+	/* Name of IRC network */
+	network : null,
+
 	/* Atheme state. */
 	atheme: {
 		state: null,

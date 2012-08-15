@@ -2,13 +2,18 @@
 qwebirc.ui.create = function(element, uiclass) {
 
   /* Initialise our Atheme login and single session. */
-  session = new qwebirc.session();
+	sessions = {};
+	sessions[""] = new qwebirc.session();
+	sessions[""].network = "(not-network)";
+	sessions["(not-network)"] = sessions[""];
 
   /* Now wait until all the JS is loaded. */
   window.addEvent("domready", function() {
 
     /* Define login function. */
     var callback = function(connOptions) {
+		var session = sessions[connOptions.network] = new qwebirc.session();
+		session.network = connOptions.network;
       session.irc = new qwebirc.irc.IRCClient(session, connOptions);
       session.irc.connect();
       window.onbeforeunload = qwebirc.ui.onbeforeunload;
@@ -18,10 +23,18 @@ qwebirc.ui.create = function(element, uiclass) {
     };
 
     /* Create UI. */
-    ui = new uiclass(this.session, $(element));
+    ui = new uiclass(sessions, $(element));
+
+	ZNC_Networks.each(function(net) {
+		callback({
+			nickname : "znc-webuser",
+			network : net,
+			autojoin : ""
+		});
+	});
 
     /* Create login window. */ 
-    ui.connectWindow(callback);
+    /*ui.connectWindow(callback);*/
 
     /* If enabled, open channel list. */
     if (conf.atheme.chan_list_on_start) {
