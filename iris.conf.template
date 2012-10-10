@@ -44,6 +44,9 @@ server: {our_host}
 # PORT: Port of IRC server to connect to.
 port: {our_port}
 
+# SSL: Use SSL to connect to IRC server or not
+ssl: {our_ssl}
+
 # REALNAME: The realname field for clients connecting through the
 # webclient.
 realname: http://moo.com/
